@@ -2,76 +2,72 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Generador de Invitaciones con QR</title>
-    <!-- Librería QRCode.js desde CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Librería QR moderna -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
-        /* ============================================
-           ESTILOS GENERALES
-           ============================================ */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: #0a0a0a;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
         }
 
-        /* ============================================
-           CONTENEDOR PRINCIPAL
-           ============================================ */
         .container {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            max-width: 100%;
             width: 100%;
+            border: 1px solid #333;
         }
 
         h1 {
             text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 8px;
+            font-size: 1.5rem;
         }
 
         .subtitle {
             text-align: center;
-            color: #666;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
         }
 
-        /* ============================================
-           SECCIÓN DE INPUT
-           ============================================ */
         .input-section {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 600;
+            margin-bottom: 6px;
+            color: #ccc;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
+            padding: 14px;
+            border: 2px solid #333;
             border-radius: 10px;
             font-size: 1rem;
+            background: #0a0a0a;
+            color: #fff;
             transition: border-color 0.3s;
         }
 
@@ -80,24 +76,30 @@
             border-color: #667eea;
         }
 
-        /* ============================================
-           BOTONES
-           ============================================ */
+        input[type="text"]::placeholder {
+            color: #555;
+        }
+
         .buttons {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         button {
             flex: 1;
-            padding: 15px 20px;
+            padding: 14px 16px;
             border: none;
             border-radius: 10px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        button:active {
+            transform: scale(0.98);
         }
 
         .btn-generar {
@@ -105,89 +107,98 @@
             color: white;
         }
 
-        .btn-generar:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
         .btn-descargar {
             background: #28a745;
             color: white;
         }
 
-        .btn-descargar:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
-
         .btn-descargar:disabled {
-            background: #ccc;
+            background: #444;
             cursor: not-allowed;
-            transform: none;
+            opacity: 0.6;
         }
 
-        /* ============================================
-           CANVAS Y PREVISUALIZACIÓN
-           ============================================ */
         .canvas-container {
             display: flex;
             justify-content: center;
-            margin-top: 20px;
+            margin-top: 15px;
+            background: #0a0a0a;
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid #333;
         }
 
         canvas {
             max-width: 100%;
             height: auto;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: block;
         }
 
-        /* ============================================
-           MENSAJES Y ESTADOS
-           ============================================ */
         .mensaje {
             text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
             display: none;
         }
 
         .mensaje.error {
-            background: #f8d7da;
-            color: #721c24;
+            background: rgba(248, 215, 218, 0.1);
+            color: #f5a0a8;
+            border: 1px solid rgba(248, 215, 218, 0.3);
             display: block;
         }
 
         .mensaje.info {
-            background: #d1ecf1;
-            color: #0c5460;
+            background: rgba(209, 236, 241, 0.1);
+            color: #8ecae6;
+            border: 1px solid rgba(209, 236, 241, 0.3);
             display: block;
         }
 
         .loading {
             text-align: center;
-            color: #666;
-            font-style: italic;
+            color: #888;
+            font-size: 0.9rem;
             display: none;
+            padding: 10px;
         }
 
-        /* Contenedor oculto para generar el QR temporalmente */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #444;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         #qrcode-hidden {
-            display: none;
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Generador de Invitaciones</h1>
-        <p class="subtitle">Totem Disco</p>
+        <p class="subtitle">Crea invitaciones con código QR</p>
 
-        <!-- Mensajes de estado -->
         <div id="mensaje" class="mensaje"></div>
-        <div id="loading" class="loading">Cargando plantilla...</div>
+        <div id="loading" class="loading">
+            <span class="spinner"></span>Cargando plantilla...
+        </div>
 
-        <!-- Sección de entrada -->
         <div class="input-section">
             <label for="nombre">Nombre del invitado:</label>
             <input 
@@ -195,104 +206,123 @@
                 id="nombre" 
                 placeholder="Ej: Juan Pérez"
                 autocomplete="off"
+                inputmode="text"
             >
         </div>
 
-        <!-- Botones -->
         <div class="buttons">
-            <button class="btn-generar" onclick="generarInvitacion()">
+            <button class="btn-generar" id="btnGenerar">
                 Generar
             </button>
             <button 
                 class="btn-descargar" 
                 id="btnDescargar" 
-                onclick="descargarInvitacion()"
                 disabled
             >
                 Descargar
             </button>
         </div>
 
-        <!-- Canvas para la invitación -->
         <div class="canvas-container">
-            <canvas id="canvas" width="1080" height="1920"></canvas>
+            <canvas id="canvas"></canvas>
         </div>
     </div>
 
-    <!-- Contenedor oculto para generar QR -->
     <div id="qrcode-hidden"></div>
 
     <script>
         // ============================================
-        // VARIABLES GLOBALES
+        // CONFIGURACIÓN
+        // ============================================
+        // Tamaño del canvas (más pequeño para mejor compatibilidad con móviles)
+        const CANVAS_WIDTH = 540;
+        const CANVAS_HEIGHT = 960;
+        
+        // ============================================
+        // ELEMENTOS DOM
         // ============================================
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const nombreInput = document.getElementById('nombre');
         const mensajeDiv = document.getElementById('mensaje');
         const loadingDiv = document.getElementById('loading');
+        const btnGenerar = document.getElementById('btnGenerar');
         const btnDescargar = document.getElementById('btnDescargar');
         const qrHiddenDiv = document.getElementById('qrcode-hidden');
 
-        // Cargar la imagen de plantilla
-        const plantilla = new Image();
-        plantilla.crossOrigin = 'anonymous';
-        
-        // Variable para controlar si la plantilla cargó correctamente
+        // Configurar tamaño del canvas
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // ============================================
+        // VARIABLES
+        // ============================================
         let plantillaCargada = false;
+        let plantilla = null;
+        let invitacionGenerada = false;
 
         // ============================================
         // INICIALIZACIÓN
         // ============================================
-        
-        // Mostrar mensaje de carga
-        loadingDiv.style.display = 'block';
-
-        // Intentar cargar la plantilla
-        plantilla.src = 'plantilla.png';
-
-        // Cuando la plantilla se carga correctamente
-        plantilla.onload = function() {
-            plantillaCargada = true;
-            loadingDiv.style.display = 'none';
-            mostrarMensaje('Plantilla cargada correctamente. ¡Listo para generar invitaciones!', 'info');
+        function init() {
+            loadingDiv.style.display = 'block';
             
-            // Dibujar plantilla inicial vacía (sin nombre ni QR)
-            dibujarPlantillaBase();
-        };
-
-        // Si hay error al cargar la plantilla
-        plantilla.onerror = function() {
-            loadingDiv.style.display = 'none';
-            mostrarMensaje('⚠️ No se encontró "plantilla.png". Se usará un fondo predeterminado.', 'error');
+            // Intentar cargar la plantilla
+            cargarPlantilla();
             
-            // Dibujar fondo predeterminado
-            dibujarFondoPredeterminado();
-        };
+            // Configurar eventos
+            btnGenerar.addEventListener('click', generarInvitacion);
+            btnDescargar.addEventListener('click', descargarInvitacion);
+            
+            nombreInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    generarInvitacion();
+                }
+            });
+        }
 
         // ============================================
-        // FUNCIONES PRINCIPALES
+        // CARGAR PLANTILLA
         // ============================================
+        function cargarPlantilla() {
+            plantilla = new Image();
+            
+            plantilla.onload = function() {
+                plantillaCargada = true;
+                loadingDiv.style.display = 'none';
+                mostrarMensaje('Plantilla cargada. ¡Listo!', 'info');
+                dibujarPlantillaBase();
+            };
+            
+            plantilla.onerror = function() {
+                loadingDiv.style.display = 'none';
+                plantillaCargada = false;
+                mostrarMensaje('No se encontró plantilla.png. Usando fondo alternativo.', 'error');
+                dibujarFondoPredeterminado();
+            };
+            
+            // Agregar timestamp para evitar caché
+            plantilla.src = 'plantilla.png?' + Date.now();
+        }
 
-        /**
-         * Dibuja solo la plantilla base (sin nombre ni QR)
-         */
+        // ============================================
+        // DIBUJAR PLANTILLA BASE
+        // ============================================
         function dibujarPlantillaBase() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            if (plantillaCargada) {
-                // Dibujar la plantilla ajustada al canvas
+            if (plantillaCargada && plantilla) {
                 ctx.drawImage(plantilla, 0, 0, canvas.width, canvas.height);
             } else {
                 dibujarFondoPredeterminado();
             }
         }
 
-        /**
-         * Dibuja un fondo predeterminado si no hay plantilla
-         */
+        // ============================================
+        // FONDO PREDETERMINADO
+        // ============================================
         function dibujarFondoPredeterminado() {
-            // Fondo degradado elegante
+            // Fondo degradado
             const gradiente = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             gradiente.addColorStop(0, '#667eea');
             gradiente.addColorStop(0.5, '#764ba2');
@@ -301,127 +331,128 @@
             ctx.fillStyle = gradiente;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Decoración: círculos decorativos
+            // Decoración
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath();
-            ctx.arc(100, 200, 150, 0, Math.PI * 2);
+            ctx.arc(50, 100, 75, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.beginPath();
-            ctx.arc(980, 1700, 200, 0, Math.PI * 2);
+            ctx.arc(490, 850, 100, 0, Math.PI * 2);
             ctx.fill();
 
-            // Título decorativo
-            ctx.font = 'bold 80px Arial, sans-serif';
+            // Título
+            ctx.font = 'bold 40px Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillStyle = 'white';
-            ctx.fillText('INVITACIÓN', canvas.width / 2, 300);
+            ctx.fillText('INVITACIÓN', canvas.width / 2, 150);
             
             // Línea decorativa
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(340, 330);
-            ctx.lineTo(740, 330);
+            ctx.moveTo(170, 165);
+            ctx.lineTo(370, 165);
             ctx.stroke();
         }
 
-        /**
-         * Genera la invitación completa con nombre y QR
-         */
+        // ============================================
+        // GENERAR INVITACIÓN
+        // ============================================
         async function generarInvitacion() {
-            // Obtener y limpiar el nombre
-            let nombre = nombreInput.value.trim();
+            const nombre = nombreInput.value.trim();
             
-            // Validar que haya un nombre
             if (!nombre) {
-                mostrarMensaje('⚠️ Por favor, ingresa un nombre.', 'error');
+                mostrarMensaje('Por favor, ingresa un nombre.', 'error');
                 nombreInput.focus();
                 return;
             }
 
-            // Limpiar el nombre: minúsculas y sin espacios extra
-            const nombreLimpio = nombre.toLowerCase().replace(/\s+/g, ' ').trim();
+            btnGenerar.disabled = true;
+            btnGenerar.textContent = 'Generando...';
             
-            // Limpiar mensajes previos
-            mensajeDiv.style.display = 'none';
-
             try {
-                // 1. Dibujar la plantilla base
+                // Limpiar mensajes
+                mensajeDiv.style.display = 'none';
+                
+                // 1. Dibujar plantilla
                 dibujarPlantillaBase();
-
-                // 2. Generar el código QR
+                
+                // 2. Generar QR
+                const nombreLimpio = nombre.toLowerCase().replace(/\s+/g, ' ').trim();
                 const qrDataUrl = await generarQR(nombreLimpio);
-
-                // 3. Dibujar el nombre en la parte superior
+                
+                // 3. Dibujar nombre
                 dibujarNombre(nombre);
-
-                // 4. Dibujar el QR centrado en la zona media-inferior
+                
+                // 4. Dibujar QR
                 await dibujarQR(qrDataUrl);
-
-                // 5. Habilitar botón de descarga
+                
+                // 5. Habilitar descarga
                 btnDescargar.disabled = false;
-
-                mostrarMensaje('✅ Invitación generada correctamente.', 'info');
-
+                invitacionGenerada = true;
+                
+                mostrarMensaje('Invitación generada correctamente.', 'info');
+                
             } catch (error) {
-                console.error('Error al generar invitación:', error);
-                mostrarMensaje('❌ Error al generar la invitación. Intenta de nuevo.', 'error');
+                console.error('Error:', error);
+                mostrarMensaje('Error al generar. Intenta de nuevo.', 'error');
+            } finally {
+                btnGenerar.disabled = false;
+                btnGenerar.textContent = 'Generar';
             }
         }
 
-        /**
-         * Genera un código QR y devuelve su Data URL
-         */
+        // ============================================
+        // GENERAR QR (compatible con móviles)
+        // ============================================
         function generarQR(texto) {
             return new Promise((resolve, reject) => {
-                // Limpiar el contenedor oculto
-                qrHiddenDiv.innerHTML = '';
-
-                // Crear nueva instancia de QRCode
-                const qr = new QRCode(qrHiddenDiv, {
-                    text: texto,
-                    width: 400,
-                    height: 400,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.H // Alta corrección de errores
-                });
-
-                // Esperar a que el QR se genere
-                setTimeout(() => {
-                    const qrImg = qrHiddenDiv.querySelector('img');
-                    if (qrImg && qrImg.src) {
-                        resolve(qrImg.src);
-                    } else {
-                        reject(new Error('No se pudo generar el QR'));
-                    }
-                }, 100);
+                try {
+                    // Usar la librería qrcode moderna
+                    QRCode.toDataURL(texto, {
+                        width: 300,
+                        height: 300,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#ffffff'
+                        },
+                        errorCorrectionLevel: 'H'
+                    }, function(err, url) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(url);
+                        }
+                    });
+                } catch (e) {
+                    reject(e);
+                }
             });
         }
 
-        /**
-         * Dibuja el nombre en el canvas con efecto de sombra para legibilidad
-         */
+        // ============================================
+        // DIBUJAR NOMBRE
+        // ============================================
         function dibujarNombre(nombre) {
             const centerX = canvas.width / 2;
-            const posY = 500; // Posición vertical del nombre
+            const posY = 250;
 
-            // Configurar fuente
-            ctx.font = 'bold 90px Arial, sans-serif';
+            ctx.font = 'bold 45px Arial, sans-serif';
             ctx.textAlign = 'center';
 
-            // Efecto de sombra para mejor legibilidad sobre cualquier fondo
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-            ctx.shadowBlur = 15;
-            ctx.shadowOffsetX = 3;
-            ctx.shadowOffsetY = 3;
+            // Sombra para legibilidad
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
 
-            // Borde/blur adicional (dibuja el texto varias veces para grosor)
+            // Borde
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillText(nombre, centerX + 4, posY + 4);
+            ctx.fillText(nombre, centerX + 2, posY + 2);
 
-            // Texto principal en blanco
+            // Texto principal
             ctx.fillStyle = '#ffffff';
             ctx.fillText(nombre, centerX, posY);
 
@@ -432,26 +463,20 @@
             ctx.shadowOffsetY = 0;
         }
 
-        /**
-         * Dibuja el código QR en el canvas centrado
-         */
-        async function dibujarQR(qrDataUrl) {
+        // ============================================
+        // DIBUJAR QR EN CANVAS
+        // ============================================
+        function dibujarQR(qrDataUrl) {
             return new Promise((resolve, reject) => {
                 const qrImg = new Image();
-                qrImg.crossOrigin = 'anonymous';
                 
                 qrImg.onload = function() {
-                    // Tamaño del QR en el canvas
-                    const qrSize = 500;
-                    
-                    // Posición centrada horizontalmente
+                    const qrSize = 250;
                     const centerX = (canvas.width - qrSize) / 2;
-                    
-                    // Posición vertical: zona media-inferior (aproximadamente 60% del alto)
-                    const posY = canvas.height * 0.55;
+                    const posY = canvas.height * 0.52;
 
-                    // Fondo blanco para el QR (mejor contraste)
-                    const padding = 30;
+                    // Fondo blanco con padding
+                    const padding = 15;
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(
                         centerX - padding, 
@@ -460,9 +485,9 @@
                         qrSize + (padding * 2)
                     );
 
-                    // Borde sutil alrededor del QR
+                    // Borde
                     ctx.strokeStyle = '#dddddd';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1;
                     ctx.strokeRect(
                         centerX - padding, 
                         posY - padding, 
@@ -470,18 +495,17 @@
                         qrSize + (padding * 2)
                     );
 
-                    // Dibujar el QR
+                    // Dibujar QR
                     ctx.drawImage(qrImg, centerX, posY, qrSize, qrSize);
 
-                    // Texto indicativo debajo del QR
-                    ctx.font = '40px Arial, sans-serif';
+                    // Texto indicativo
+                    ctx.font = '20px Arial, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillStyle = '#ffffff';
                     ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-                    ctx.shadowBlur = 10;
-                    ctx.fillText('Escanea para verificar', canvas.width / 2, posY + qrSize + 80);
+                    ctx.shadowBlur = 5;
+                    ctx.fillText('Escanea para verificar', canvas.width / 2, posY + qrSize + 45);
                     
-                    // Resetear sombra
                     ctx.shadowColor = 'transparent';
                     ctx.shadowBlur = 0;
 
@@ -489,49 +513,66 @@
                 };
 
                 qrImg.onerror = function() {
-                    reject(new Error('Error al cargar la imagen del QR'));
+                    reject(new Error('Error al cargar QR'));
                 };
 
                 qrImg.src = qrDataUrl;
             });
         }
 
-        /**
-         * Descarga la invitación como imagen PNG
-         */
+        // ============================================
+        // DESCARGAR (compatible con Android)
+        // ============================================
         function descargarInvitacion() {
+            if (!invitacionGenerada) return;
+            
             try {
+                const nombre = nombreInput.value.trim() || 'invitacion';
+                const nombreArchivo = 'invitacion_' + nombre.toLowerCase().replace(/\s+/g, '_') + '.png';
+                
                 // Crear enlace de descarga
                 const link = document.createElement('a');
+                link.download = nombreArchivo;
                 
-                // Obtener el nombre del invitado para el nombre del archivo
-                const nombre = nombreInput.value.trim() || 'invitacion';
-                const nombreArchivo = nombre.toLowerCase().replace(/\s+/g, '_');
+                // Obtener data URL del canvas
+                const dataUrl = canvas.toDataURL('image/png');
+                link.href = dataUrl;
                 
-                link.download = `invitacion_${nombreArchivo}.png`;
-                link.href = canvas.toDataURL('image/png');
+                // Para Android: abrir en nueva ventana si la descarga no funciona
+                link.target = '_blank';
                 
-                // Simular clic para descargar
+                // Agregar al DOM y hacer clic
                 document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                mostrarMensaje('✅ Invitación descargada correctamente.', 'info');
-
+                
+                // Pequeño delay para asegurar que el enlace esté listo
+                setTimeout(() => {
+                    link.click();
+                    document.body.removeChild(link);
+                    mostrarMensaje('Imagen guardada.', 'info');
+                }, 100);
+                
             } catch (error) {
                 console.error('Error al descargar:', error);
-                mostrarMensaje('❌ Error al descargar la imagen.', 'error');
+                
+                // Fallback: mostrar imagen para guardar manualmente
+                try {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const ventana = window.open();
+                    ventana.document.write('<html><head><title>Guardar Invitación</title></head><body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;"><img src="' + dataUrl + '" style="max-width:100%;height:auto;"><p style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,0.8);padding:15px 25px;border-radius:10px;font-family:sans-serif;">Mantén presionada la imagen para guardarla</p></body></html>');
+                    mostrarMensaje('Mantén presionada la imagen para guardarla.', 'info');
+                } catch (e) {
+                    mostrarMensaje('Error al descargar. Intenta de nuevo.', 'error');
+                }
             }
         }
 
-        /**
-         * Muestra un mensaje al usuario
-         */
+        // ============================================
+        // MOSTRAR MENSAJE
+        // ============================================
         function mostrarMensaje(texto, tipo) {
             mensajeDiv.textContent = texto;
             mensajeDiv.className = 'mensaje ' + tipo;
             
-            // Auto-ocultar mensajes de éxito después de 3 segundos
             if (tipo === 'info') {
                 setTimeout(() => {
                     mensajeDiv.style.display = 'none';
@@ -540,15 +581,14 @@
         }
 
         // ============================================
-        // EVENTOS ADICIONALES
+        // INICIAR
         // ============================================
-
-        // Permitir generar con la tecla Enter
-        nombreInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                generarInvitacion();
-            }
-        });
+        // Esperar a que el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
