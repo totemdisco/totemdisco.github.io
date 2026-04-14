@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Generador de Invitaciones con QR</title>
+    <title>Totem Disco - Generador de Invitaciones QR</title>
     <!-- Librería QRCode.js desde CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Librería para escanear QR -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         /* ============================================
            ESTILOS GENERALES
@@ -19,7 +24,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0a0a0a;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -27,6 +32,40 @@
             padding: 20px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ============================================
+           NAVEGACIÓN
+           ============================================ */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.1);
+            color: white;
         }
 
         /* ============================================
@@ -39,6 +78,15 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             max-width: 500px;
             width: 100%;
+            display: none;
+        }
+
+        .container.active {
+            display: block;
+        }
+
+        .container-wide {
+            max-width: 900px;
         }
 
         h1 {
@@ -142,6 +190,55 @@
             transform: none;
         }
 
+        .btn-peligro {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-peligro:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-usado {
+            background: #ffc107;
+            color: #333;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+        }
+
+        .btn-usado:hover {
+            background: #e0a800;
+        }
+
+        .btn-verificar {
+            background: #17a2b8;
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+        }
+
+        .btn-verificar:hover {
+            background: #138496;
+        }
+
+        .btn-escaner {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            font-size: 1.2rem;
+            padding: 20px;
+        }
+
+        .btn-escaner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-detener {
+            background: #dc3545;
+            color: white;
+        }
+
         /* ============================================
            CANVAS Y PREVISUALIZACIÓN
            ============================================ */
@@ -179,6 +276,12 @@
         .mensaje.info {
             background: #d1ecf1;
             color: #0c5460;
+            display: block;
+        }
+
+        .mensaje.success {
+            background: #d4edda;
+            color: #155724;
             display: block;
         }
 
@@ -243,10 +346,331 @@
             font-size: 1.5rem;
             cursor: pointer;
         }
+
+        /* ============================================
+           ESCANER QR
+           ============================================ */
+        .escaner-container {
+            text-align: center;
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        #reader video {
+            border-radius: 15px;
+        }
+
+        #reader__dashboard_section_csr span {
+            display: none !important;
+        }
+
+        .escaner-instrucciones {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .escaner-instrucciones h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .escaner-instrucciones p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .escaner-instrucciones ol {
+            text-align: left;
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .escaner-instrucciones li {
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        /* ============================================
+           RESULTADO DE ESCANEO
+           ============================================ */
+        .resultado-escaneo {
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 20px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .resultado-escaneo.valido {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            display: block;
+            border: 2px solid #28a745;
+        }
+
+        .resultado-escaneo.invalido {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            display: block;
+            border: 2px solid #dc3545;
+        }
+
+        .resultado-escaneo.ya-usado {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            color: #856404;
+            display: block;
+            border: 2px solid #ffc107;
+        }
+
+        .resultado-escaneo h2 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .resultado-escaneo .nombre-invitado {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 15px 0;
+            text-transform: uppercase;
+        }
+
+        .resultado-escaneo .info-adicional {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+
+        .icono-grande {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        /* ============================================
+           TABLA DE INVITADOS
+           ============================================ */
+        .tabla-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .estado-pendiente {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        .estado-usado {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-pendiente {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-usado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        /* ============================================
+           ESTADÍSTICAS
+           ============================================ */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        /* ============================================
+           FILTROS Y BÚSQUEDA
+           ============================================ */
+        .filtros {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filtros input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filtros select {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+        }
+
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabla-container {
+                font-size: 0.85rem;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+            
+            .nav-tab {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+
+            .resultado-escaneo .nombre-invitado {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Animación de conexión */
+        .conexion-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .conexion-online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .conexion-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .conexion-conectando {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Sonido de éxito/error */
+        .sonido-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            z-index: 100;
+        }
     </style>
+<base target="_blank">
 </head>
 <body>
-    <div class="container">
+    <!-- Indicador de conexión -->
+    <div id="conexionStatus" class="conexion-status conexion-conectando">
+        🟡 Conectando...
+    </div>
+
+    <!-- Toggle sonido -->
+    <div class="sonido-toggle" onclick="toggleSonido()" id="sonidoToggle">
+        🔊 Sonido: ON
+    </div>
+
+    <!-- Navegación -->
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="mostrarTab('generador')">
+            🎫 Generar QR
+        </button>
+        <button class="nav-tab" onclick="mostrarTab('escaner')">
+            📷 Escanear QR
+        </button>
+        <button class="nav-tab" onclick="mostrarTab('lista')">
+            📋 Lista
+        </button>
+    </div>
+
+    <!-- TAB 1: GENERADOR DE QR -->
+    <div id="tab-generador" class="container active">
         <h1>Generador de Invitaciones</h1>
         <p class="subtitle">Totem Disco</p>
 
@@ -286,6 +710,109 @@
         </div>
     </div>
 
+    <!-- TAB 2: ESCANER DE QR -->
+    <div id="tab-escaner" class="container">
+        <h1>Verificar Invitación</h1>
+        <p class="subtitle">Escanea el código QR del invitado</p>
+
+        <div class="escaner-container">
+            <!-- Instrucciones -->
+            <div class="escaner-instrucciones" id="instrucciones">
+                <h3>📷 ¿Cómo funciona?</h3>
+                <ol>
+                    <li>Haz clic en <strong>"Iniciar Cámara"</strong></li>
+                    <li>Permite el acceso a la cámara cuando te lo pida</li>
+                    <li>Apunta la cámara al código QR de la invitación</li>
+                    <li>¡El sistema verificará automáticamente!</li>
+                </ol>
+            </div>
+
+            <!-- Botón iniciar -->
+            <div id="btnEscanerContainer">
+                <button class="btn-escaner" onclick="iniciarEscaner()">
+                    📷 Iniciar Cámara
+                </button>
+            </div>
+
+            <!-- Contenedor del escaner -->
+            <div id="reader" style="display: none;"></div>
+
+            <!-- Botón detener -->
+            <div id="btnDetenerContainer" style="display: none; margin-top: 15px;">
+                <button class="btn-detener" onclick="detenerEscaner()">
+                    ⏹️ Detener Cámara
+                </button>
+            </div>
+
+            <!-- Resultado del escaneo -->
+            <div id="resultadoEscaneo" class="resultado-escaneo">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: LISTA DE INVITADOS -->
+    <div id="tab-lista" class="container container-wide">
+        <h1>Lista de Invitados</h1>
+        <p class="subtitle">Gestión de invitaciones - Totem Disco</p>
+
+        <!-- Estadísticas -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-number" id="statTotal">0</div>
+                <div class="stat-label">Total Invitados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="statPendientes">0</div>
+                <div class="stat-label">Pendientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="statUsados">0</div>
+                <div class="stat-label">Ya Ingresaron</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros">
+            <input 
+                type="text" 
+                id="buscarInvitado" 
+                placeholder="Buscar invitado..."
+                oninput="filtrarInvitados()"
+            >
+            <select id="filtroEstado" onchange="filtrarInvitados()">
+                <option value="todos">Todos</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="usado">Ya usados</option>
+            </select>
+        </div>
+
+        <!-- Botón reiniciar -->
+        <div class="buttons">
+            <button class="btn-peligro" onclick="confirmarReiniciar()">
+                🗑️ Reiniciar Lista (Nuevo Evento)
+            </button>
+        </div>
+
+        <!-- Tabla de invitados -->
+        <div class="tabla-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Fecha Generación</th>
+                        <th>Estado</th>
+                        <th>Fecha Uso</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaInvitados">
+                    <!-- Se llena dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Contenedor oculto para generar QR -->
     <div id="qrcode-hidden"></div>
 
@@ -298,6 +825,33 @@
 
     <script>
         // ============================================
+        // CONFIGURACIÓN FIREBASE
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAE3vIiMLMaZ2tSMA0N2vkQb_Tglu9fi7c",
+            authDomain: "totemparana-69146.firebaseapp.com",
+            projectId: "totemparana-69146",
+            storageBucket: "totemparana-69146.firebasestorage.app",
+            messagingSenderId: "1048633188258",
+            appId: "1:1048633188258:web:9842a2beb752723206dcfb",
+            measurementId: "G-4FH6TSFFDN"
+        };
+
+        // Inicializar Firebase
+        let db;
+        let invitados = [];
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            actualizarEstadoConexion('online');
+        } catch (error) {
+            console.error('Error inicializando Firebase:', error);
+            actualizarEstadoConexion('offline');
+            mostrarMensaje('❌ Error de conexión con la base de datos', 'error');
+        }
+
+        // ============================================
         // VARIABLES GLOBALES
         // ============================================
         const canvas = document.getElementById('canvas');
@@ -309,6 +863,11 @@
         const qrHiddenDiv = document.getElementById('qrcode-hidden');
         const modal = document.getElementById('modal');
         const modalImg = document.getElementById('modal-img');
+
+        // Variables del escaner
+        let html5QrCode = null;
+        let sonidoActivado = true;
+        let escaneoEnProceso = false;
 
         // Detectar si es Android
         const isAndroid = /Android/i.test(navigator.userAgent);
@@ -329,50 +888,284 @@
         // Mostrar mensaje de carga
         loadingDiv.style.display = 'block';
 
-        // Intentar cargar la plantilla (sin CORS para evitar problemas en Android)
+        // Intentar cargar la plantilla
         plantilla.onload = function() {
             plantillaCargada = true;
             loadingDiv.style.display = 'none';
-            mostrarMensaje('Plantilla cargada correctamente. ¡Listo para generar invitaciones!', 'info');
-            
-            // Dibujar plantilla inicial vacía (sin nombre ni QR)
+            mostrarMensaje('✅ Conectado. ¡Listo para generar invitaciones!', 'info');
             dibujarPlantillaBase();
         };
 
         plantilla.onerror = function() {
             loadingDiv.style.display = 'none';
-            mostrarMensaje('⚠️ No se encontró "plantilla.png". Se usará un fondo predeterminado.', 'error');
-            
-            // Dibujar fondo predeterminado
+            mostrarMensaje('⚠️ No se encontró "plantilla.png". Se usará fondo predeterminado.', 'error');
             dibujarFondoPredeterminado();
         };
 
-        // Cargar la plantilla
         plantilla.src = 'plantilla.png';
 
+        // Escuchar cambios en tiempo real
+        if (db) {
+            db.collection('invitados').orderBy('fechaGeneracion', 'desc').onSnapshot((snapshot) => {
+                invitados = [];
+                snapshot.forEach((doc) => {
+                    invitados.push({ id: doc.id, ...doc.data() });
+                });
+                actualizarTabla();
+                actualizarEstadisticas();
+            }, (error) => {
+                console.error('Error escuchando cambios:', error);
+                actualizarEstadoConexion('offline');
+            });
+        }
+
         // ============================================
-        // FUNCIONES PRINCIPALES
+        // FUNCIONES DE NAVEGACIÓN
         // ============================================
 
-        /**
-         * Dibuja solo la plantilla base (sin nombre ni QR)
-         */
+        function mostrarTab(tabName) {
+            // Detener escaner si cambia de tab
+            if (tabName !== 'escaner' && html5QrCode && html5QrCode.isScanning) {
+                detenerEscaner();
+            }
+
+            // Ocultar todos los tabs
+            document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            
+            // Mostrar el tab seleccionado
+            document.getElementById('tab-' + tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function actualizarEstadoConexion(estado) {
+            const statusEl = document.getElementById('conexionStatus');
+            if (estado === 'online') {
+                statusEl.textContent = '🟢 Conectado';
+                statusEl.className = 'conexion-status conexion-online';
+            } else if (estado === 'offline') {
+                statusEl.textContent = '🔴 Sin conexión';
+                statusEl.className = 'conexion-status conexion-offline';
+            } else {
+                statusEl.textContent = '🟡 Conectando...';
+                statusEl.className = 'conexion-status conexion-conectando';
+            }
+        }
+
+        function toggleSonido() {
+            sonidoActivado = !sonidoActivado;
+            document.getElementById('sonidoToggle').textContent = 
+                sonidoActivado ? '🔊 Sonido: ON' : '🔇 Sonido: OFF';
+        }
+
+        // ============================================
+        // SONIDOS
+        // ============================================
+
+        function reproducirSonido(tipo) {
+            if (!sonidoActivado) return;
+
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+
+            const audioCtx = new AudioContext();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (tipo === 'exito') {
+                // Sonido de éxito - tono ascendente
+                oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // Do
+                oscillator.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // Mi
+                oscillator.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // Sol
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.5);
+            } else if (tipo === 'error') {
+                // Sonido de error - tono grave descendente
+                oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.4);
+            } else if (tipo === 'advertencia') {
+                // Sonido de advertencia - doble beep
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + 0.2);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.4);
+            }
+        }
+
+        // ============================================
+        // ESCANER QR
+        // ============================================
+
+        async function iniciarEscaner() {
+            try {
+                // Ocultar instrucciones y botón iniciar
+                document.getElementById('instrucciones').style.display = 'none';
+                document.getElementById('btnEscanerContainer').style.display = 'none';
+                document.getElementById('resultadoEscaneo').style.display = 'none';
+
+                // Mostrar contenedor del escaner
+                document.getElementById('reader').style.display = 'block';
+                document.getElementById('btnDetenerContainer').style.display = 'block';
+
+                // Crear instancia del escaner
+                html5QrCode = new Html5Qrcode("reader");
+
+                // Configuración
+                const config = { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+
+                // Iniciar cámara trasera
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    onScanSuccess,
+                    onScanFailure
+                );
+
+            } catch (error) {
+                console.error('Error iniciando escaner:', error);
+                mostrarResultadoEscaneo('error', 'Error al iniciar la cámara', 
+                    'Asegúrate de permitir el acceso a la cámara. Si usas iPhone, usa Safari.');
+                
+                // Restaurar interfaz
+                document.getElementById('instrucciones').style.display = 'block';
+                document.getElementById('btnEscanerContainer').style.display = 'block';
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('btnDetenerContainer').style.display = 'none';
+            }
+        }
+
+        async function detenerEscaner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                await html5QrCode.stop();
+                await html5QrCode.clear();
+            }
+
+            // Restaurar interfaz
+            document.getElementById('instrucciones').style.display = 'block';
+            document.getElementById('btnEscanerContainer').style.display = 'block';
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('btnDetenerContainer').style.display = 'none';
+            document.getElementById('resultadoEscaneo').style.display = 'none';
+            
+            escaneoEnProceso = false;
+        }
+
+        async function onScanSuccess(decodedText, decodedResult) {
+            // Evitar escaneos múltiples del mismo código
+            if (escaneoEnProceso) return;
+            escaneoEnProceso = true;
+
+            console.log('QR escaneado:', decodedText);
+
+            // Detener el escaner temporalmente
+            if (html5QrCode && html5QrCode.isScanning) {
+                await html5QrCode.pause();
+            }
+
+            // Verificar el código
+            await verificarCodigoQR(decodedText);
+
+            // Reactivar escaner después de 3 segundos
+            setTimeout(async () => {
+                if (html5QrCode) {
+                    await html5QrCode.resume();
+                }
+                escaneoEnProceso = false;
+            }, 3000);
+        }
+
+        function onScanFailure(error) {
+            // No hacer nada en error de escaneo (es normal cuando no hay QR)
+            // console.warn('Error escaneo:', error);
+        }
+
+        async function verificarCodigoQR(codigo) {
+            const codigoLimpio = codigo.toLowerCase().trim();
+            const invitado = invitados.find(inv => inv.nombre === codigoLimpio);
+
+            if (!invitado) {
+                reproducirSonido('error');
+                mostrarResultadoEscaneo('invalido', 'INVITACIÓN NO VÁLIDA', 
+                    `El código "${codigo}" no está registrado en el sistema.`,
+                    '❌');
+                return;
+            }
+
+            if (invitado.estado === 'usado') {
+                reproducirSonido('advertencia');
+                mostrarResultadoEscaneo('ya-usado', 'INVITACIÓN YA USADA', 
+                    invitado.nombreOriginal || invitado.nombre,
+                    '⚠️',
+                    `Fecha de uso: ${invitado.fechaUso ? invitado.fechaUso.toDate().toLocaleString('es-ES') : '-'}`);
+                return;
+            }
+
+            // Es válido - marcar como usado
+            try {
+                await db.collection('invitados').doc(invitado.id).update({
+                    estado: 'usado',
+                    fechaUso: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                reproducirSonido('exito');
+                mostrarResultadoEscaneo('valido', '✅ INVITACIÓN VÁLIDA', 
+                    invitado.nombreOriginal || invitado.nombre,
+                    '🎉',
+                    '¡Bienvenido! Acceso permitido.');
+
+            } catch (error) {
+                console.error('Error marcando como usado:', error);
+                reproducirSonido('error');
+                mostrarResultadoEscaneo('error', 'ERROR', 
+                    'No se pudo registrar el ingreso. Intenta de nuevo.');
+            }
+        }
+
+        function mostrarResultadoEscaneo(tipo, titulo, mensaje, icono = '', infoExtra = '') {
+            const resultadoDiv = document.getElementById('resultadoEscaneo');
+            
+            resultadoDiv.className = 'resultado-escaneo ' + tipo;
+            resultadoDiv.innerHTML = `
+                <div class="icono-grande">${icono || (tipo === 'valido' ? '✅' : tipo === 'invalido' ? '❌' : '⚠️')}</div>
+                <h2>${titulo}</h2>
+                <div class="nombre-invitado">${mensaje}</div>
+                ${infoExtra ? `<div class="info-adicional">${infoExtra}</div>` : ''}
+            `;
+            
+            resultadoDiv.style.display = 'block';
+        }
+
+        // ============================================
+        // FUNCIONES PRINCIPALES - GENERADOR
+        // ============================================
+
         function dibujarPlantillaBase() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             if (plantillaCargada) {
-                // Dibujar la plantilla ajustada al canvas
                 ctx.drawImage(plantilla, 0, 0, canvas.width, canvas.height);
             } else {
                 dibujarFondoPredeterminado();
             }
         }
 
-        /**
-         * Dibuja un fondo predeterminado si no hay plantilla
-         */
         function dibujarFondoPredeterminado() {
-            // Fondo degradado elegante
             const gradiente = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             gradiente.addColorStop(0, '#667eea');
             gradiente.addColorStop(0.5, '#764ba2');
@@ -381,7 +1174,6 @@
             ctx.fillStyle = gradiente;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Decoración: círculos decorativos
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath();
             ctx.arc(100, 200, 150, 0, Math.PI * 2);
@@ -391,13 +1183,11 @@
             ctx.arc(980, 1700, 200, 0, Math.PI * 2);
             ctx.fill();
 
-            // Título decorativo
             ctx.font = 'bold 80px Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillStyle = 'white';
             ctx.fillText('INVITACIÓN', canvas.width / 2, 300);
             
-            // Línea decorativa
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -406,44 +1196,47 @@
             ctx.stroke();
         }
 
-        /**
-         * Genera la invitación completa con nombre y QR
-         */
         async function generarInvitacion() {
-            // Obtener y limpiar el nombre
             let nombre = nombreInput.value.trim();
             
-            // Validar que haya un nombre
             if (!nombre) {
                 mostrarMensaje('⚠️ Por favor, ingresa un nombre.', 'error');
                 nombreInput.focus();
                 return;
             }
 
-            // Limpiar el nombre: minúsculas y sin espacios extra
             const nombreLimpio = nombre.toLowerCase().replace(/\s+/g, ' ').trim();
             
-            // Limpiar mensajes previos
             mensajeDiv.style.display = 'none';
 
             try {
+                // Verificar si ya existe
+                const existe = invitados.some(inv => inv.nombre.toLowerCase() === nombreLimpio);
+                if (existe) {
+                    mostrarMensaje('⚠️ Este nombre ya tiene una invitación generada.', 'error');
+                    return;
+                }
+
                 // 1. Dibujar la plantilla base
                 dibujarPlantillaBase();
 
                 // 2. Generar el código QR
                 const qrDataUrl = await generarQR(nombreLimpio);
 
-                // 3. Dibujar el nombre en la parte superior
+                // 3. Dibujar el nombre
                 dibujarNombre(nombre);
 
-                // 4. Dibujar el QR centrado en la zona media-inferior
+                // 4. Dibujar el QR
                 await dibujarQR(qrDataUrl);
 
-                // 5. Habilitar botón de descarga
+                // 5. Guardar en Firebase
+                await guardarInvitado(nombreLimpio, nombre);
+
+                // 6. Habilitar botón de descarga
                 btnDescargar.disabled = false;
                 invitacionGenerada = true;
 
-                mostrarMensaje('✅ Invitación generada correctamente.', 'info');
+                mostrarMensaje('✅ Invitación generada y guardada correctamente.', 'success');
 
             } catch (error) {
                 console.error('Error al generar invitación:', error);
@@ -451,17 +1244,25 @@
             }
         }
 
-        /**
-         * Genera un código QR y devuelve su Data URL
-         * Versión mejorada compatible con Android
-         */
+        async function guardarInvitado(nombreLimpio, nombreOriginal) {
+            if (!db) {
+                throw new Error('No hay conexión con la base de datos');
+            }
+
+            await db.collection('invitados').doc(nombreLimpio).set({
+                nombre: nombreLimpio,
+                nombreOriginal: nombreOriginal,
+                fechaGeneracion: firebase.firestore.FieldValue.serverTimestamp(),
+                estado: 'pendiente',
+                fechaUso: null
+            });
+        }
+
         function generarQR(texto) {
             return new Promise((resolve, reject) => {
                 try {
-                    // Limpiar el contenedor oculto
                     qrHiddenDiv.innerHTML = '';
 
-                    // Crear nueva instancia de QRCode
                     const qr = new QRCode(qrHiddenDiv, {
                         text: texto,
                         width: 400,
@@ -471,7 +1272,6 @@
                         correctLevel: QRCode.CorrectLevel.H
                     });
 
-                    // Esperar a que el QR se genere (más tiempo para Android)
                     setTimeout(() => {
                         try {
                             const qrImg = qrHiddenDiv.querySelector('img');
@@ -480,16 +1280,9 @@
                             if (qrImg && qrImg.src && qrImg.src.startsWith('data:')) {
                                 resolve(qrImg.src);
                             } else if (qrCanvas) {
-                                // Si hay canvas, convertirlo a data URL
                                 resolve(qrCanvas.toDataURL('image/png'));
                             } else {
-                                // Intentar obtener de otra forma
-                                const imgElement = qrHiddenDiv.getElementsByTagName('img')[0];
-                                if (imgElement && imgElement.src) {
-                                    resolve(imgElement.src);
-                                } else {
-                                    reject(new Error('No se pudo generar el QR - formato no soportado'));
-                                }
+                                reject(new Error('No se pudo generar el QR'));
                             }
                         } catch (e) {
                             reject(new Error('Error al obtener QR: ' + e.message));
@@ -502,57 +1295,40 @@
             });
         }
 
-        /**
-         * Dibuja el nombre en el canvas con efecto de sombra para legibilidad
-         */
         function dibujarNombre(nombre) {
             const centerX = canvas.width / 2;
-            const posY = 500; // Posición vertical del nombre
+            const posY = 500;
 
-            // Configurar fuente
             ctx.font = 'bold 90px Arial, sans-serif';
             ctx.textAlign = 'center';
 
-            // Efecto de sombra para mejor legibilidad sobre cualquier fondo
             ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
             ctx.shadowBlur = 15;
             ctx.shadowOffsetX = 3;
             ctx.shadowOffsetY = 3;
 
-            // Borde/blur adicional (dibuja el texto varias veces para grosor)
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillText(nombre, centerX + 4, posY + 4);
 
-            // Texto principal en blanco
             ctx.fillStyle = '#ffffff';
             ctx.fillText(nombre, centerX, posY);
 
-            // Resetear sombra
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
         }
 
-        /**
-         * Dibuja el código QR en el canvas centrado
-         */
         async function dibujarQR(qrDataUrl) {
             return new Promise((resolve, reject) => {
                 const qrImg = new Image();
                 
                 qrImg.onload = function() {
                     try {
-                        // Tamaño del QR en el canvas
                         const qrSize = 500;
-                        
-                        // Posición centrada horizontalmente
                         const centerX = (canvas.width - qrSize) / 2;
-                        
-                        // Posición vertical: zona media-inferior (aproximadamente 60% del alto)
                         const posY = canvas.height * 0.55;
 
-                        // Fondo blanco para el QR (mejor contraste)
                         const padding = 30;
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(
@@ -562,7 +1338,6 @@
                             qrSize + (padding * 2)
                         );
 
-                        // Borde sutil alrededor del QR
                         ctx.strokeStyle = '#dddddd';
                         ctx.lineWidth = 2;
                         ctx.strokeRect(
@@ -572,10 +1347,8 @@
                             qrSize + (padding * 2)
                         );
 
-                        // Dibujar el QR
                         ctx.drawImage(qrImg, centerX, posY, qrSize, qrSize);
 
-                        // Texto indicativo debajo del QR
                         ctx.font = '40px Arial, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.fillStyle = '#ffffff';
@@ -583,7 +1356,6 @@
                         ctx.shadowBlur = 10;
                         ctx.fillText('Escanea para verificar', canvas.width / 2, posY + qrSize + 80);
                         
-                        // Resetear sombra
                         ctx.shadowColor = 'transparent';
                         ctx.shadowBlur = 0;
 
@@ -601,10 +1373,6 @@
             });
         }
 
-        /**
-         * Descarga la invitación como imagen PNG
-         * Versión mejorada compatible con Android
-         */
         function descargarInvitacion() {
             if (!invitacionGenerada) {
                 mostrarMensaje('⚠️ Primero genera una invitación.', 'error');
@@ -612,11 +1380,9 @@
             }
 
             try {
-                // Obtener el nombre del invitado para el nombre del archivo
                 const nombre = nombreInput.value.trim() || 'invitacion';
                 const nombreArchivo = 'invitacion_' + nombre.toLowerCase().replace(/\s+/g, '_') + '.png';
                 
-                // Convertir canvas a blob para mejor compatibilidad
                 canvas.toBlob(function(blob) {
                     if (!blob) {
                         mostrarMensaje('❌ Error al generar la imagen.', 'error');
@@ -625,14 +1391,12 @@
 
                     const url = URL.createObjectURL(blob);
 
-                    // En Android, mostrar modal con la imagen para que pueda guardarla manualmente
                     if (isAndroid) {
                         mostrarModal(url);
                         mostrarMensaje('📱 Mantén presionada la imagen para guardarla', 'info');
                         return;
                     }
 
-                    // Para otros dispositivos, descarga normal
                     const link = document.createElement('a');
                     link.download = nombreArchivo;
                     link.href = url;
@@ -640,7 +1404,6 @@
                     
                     document.body.appendChild(link);
                     
-                    // Usar setTimeout para asegurar que el click se registre
                     setTimeout(function() {
                         link.click();
                         document.body.removeChild(link);
@@ -656,57 +1419,166 @@
             }
         }
 
-        /**
-         * Muestra el modal con la imagen (para Android)
-         */
         function mostrarModal(url) {
             modalImg.src = url;
             modal.classList.add('active');
-            
-            // Guardar referencia para liberar después
             modalImg.dataset.blobUrl = url;
         }
 
-        /**
-         * Cierra el modal
-         */
         function cerrarModal() {
             modal.classList.remove('active');
-            
-            // Liberar el blob URL
             if (modalImg.dataset.blobUrl) {
                 URL.revokeObjectURL(modalImg.dataset.blobUrl);
                 modalImg.dataset.blobUrl = '';
             }
         }
 
-        /**
-         * Muestra un mensaje al usuario
-         */
+        // ============================================
+        // FUNCIONES DE LISTA DE INVITADOS
+        // ============================================
+
+        function actualizarTabla() {
+            const tbody = document.getElementById('tablaInvitados');
+            const filtroTexto = document.getElementById('buscarInvitado').value.toLowerCase();
+            const filtroEstado = document.getElementById('filtroEstado').value;
+
+            let invitadosFiltrados = invitados.filter(inv => {
+                const coincideTexto = inv.nombre.toLowerCase().includes(filtroTexto);
+                const coincideEstado = filtroEstado === 'todos' || inv.estado === filtroEstado;
+                return coincideTexto && coincideEstado;
+            });
+
+            if (invitadosFiltrados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #666; padding: 30px;">
+                            No hay invitados registrados
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = invitadosFiltrados.map(inv => {
+                const fechaGen = inv.fechaGeneracion ? 
+                    inv.fechaGeneracion.toDate().toLocaleString('es-ES') : '-';
+                const fechaUso = inv.fechaUso ? 
+                    inv.fechaUso.toDate().toLocaleString('es-ES') : '-';
+                
+                return `
+                    <tr>
+                        <td>${inv.nombreOriginal || inv.nombre}</td>
+                        <td>${fechaGen}</td>
+                        <td>
+                            <span class="badge badge-${inv.estado}">
+                                ${inv.estado === 'pendiente' ? '⏳ Pendiente' : '✅ Usado'}
+                            </span>
+                        </td>
+                        <td>${fechaUso}</td>
+                        <td>
+                            ${inv.estado === 'pendiente' ? 
+                                `<button class="btn-usado" onclick="marcarUsado('${inv.id}')">Marcar Usado</button>` :
+                                `<button class="btn-verificar" onclick="marcarPendiente('${inv.id}')">Restaurar</button>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function actualizarEstadisticas() {
+            const total = invitados.length;
+            const usados = invitados.filter(inv => inv.estado === 'usado').length;
+            const pendientes = total - usados;
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statPendientes').textContent = pendientes;
+            document.getElementById('statUsados').textContent = usados;
+        }
+
+        function filtrarInvitados() {
+            actualizarTabla();
+        }
+
+        async function marcarUsado(id) {
+            if (!db) return;
+            
+            try {
+                await db.collection('invitados').doc(id).update({
+                    estado: 'usado',
+                    fechaUso: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                mostrarMensaje('✅ Invitación marcada como usada', 'info');
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('❌ Error al actualizar', 'error');
+            }
+        }
+
+        async function marcarPendiente(id) {
+            if (!db) return;
+            
+            try {
+                await db.collection('invitados').doc(id).update({
+                    estado: 'pendiente',
+                    fechaUso: null
+                });
+                mostrarMensaje('✅ Invitación restaurada', 'info');
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('❌ Error al actualizar', 'error');
+            }
+        }
+
+        async function confirmarReiniciar() {
+            if (invitados.length === 0) {
+                mostrarMensaje('ℹ️ No hay invitados para eliminar', 'info');
+                return;
+            }
+
+            const confirmar = confirm(
+                `¿Estás seguro de reiniciar la lista?\n\n` +
+                `Se eliminarán ${invitados.length} invitados permanentemente.\n\n` +
+                `Esta acción no se puede deshacer.`
+            );
+
+            if (confirmar && db) {
+                try {
+                    const batch = db.batch();
+                    invitados.forEach(inv => {
+                        batch.delete(db.collection('invitados').doc(inv.id));
+                    });
+                    await batch.commit();
+                    mostrarMensaje('✅ Lista reiniciada correctamente', 'success');
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarMensaje('❌ Error al reiniciar la lista', 'error');
+                }
+            }
+        }
+
+        // ============================================
+        // UTILIDADES
+        // ============================================
+
         function mostrarMensaje(texto, tipo) {
             mensajeDiv.textContent = texto;
             mensajeDiv.className = 'mensaje ' + tipo;
             
-            // Auto-ocultar mensajes de éxito después de 3 segundos
-            if (tipo === 'info') {
+            if (tipo === 'info' || tipo === 'success') {
                 setTimeout(function() {
                     mensajeDiv.style.display = 'none';
                 }, 3000);
             }
         }
 
-        // ============================================
-        // EVENTOS ADICIONALES
-        // ============================================
-
-        // Permitir generar con la tecla Enter
+        // Eventos
         nombreInput.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 generarInvitacion();
             }
         });
 
-        // Cerrar modal al hacer clic fuera de la imagen
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 cerrarModal();
